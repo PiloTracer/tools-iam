@@ -24,7 +24,7 @@ There are two different "Client IDs" involved in the full flow. **Do not confuse
 ## 2. Step-by-Step Integration
 
 ### Scenario: Remote "tools-dashboard-client" (Frontend)
-Your remote application runs at `http://localhost:3000` (or a remote domain) and authenticates users via `http://localhost:18090` (Tools IAM).
+Your remote application runs at `http://localhost:18081` (Host Port) and authenticates users via `http://localhost:18090` (Tools IAM).
 
 #### Step 1: Register the App in Keycloak
 1.  Log in to Keycloak Admin (`http://localhost:18090`).
@@ -38,9 +38,8 @@ Your remote application runs at `http://localhost:3000` (or a remote domain) and
     - **Standard Flow**: **ON**.
     - **Direct Access Grants**: **OFF**.
 5.  **Access Settings**:
-    - **Valid Redirect URIs**: `http://localhost:3000/api/auth/callback/keycloak`
-        - *Change `http://localhost:3000` to your actual remote app URL*.
-    - **Web Origins**: `http://localhost:3000` (for CORS).
+    - **Valid Redirect URIs**: `http://localhost:18081/api/auth/callback/keycloak`
+    - **Web Origins**: `http://localhost:18081` (for CORS).
 
 #### Step 2: Configure Your External App
 Your application needs to know where IAM is.
@@ -75,23 +74,31 @@ If you have a backend service communicating directly with Keycloak.
 ---
 
 ## 3. Communication Flow
-1.  **User Visits App**: `http://localhost:3000`
+1.  **User Visits App**: `http://localhost:18081`
 2.  **App Redirects User**: 
     - To: `http://localhost:18090/realms/.../auth`
 3.  **User Logs In**:
     - User sees Keycloak Login Page.
     - User clicks "Sign in with Google" -> Redirects to Google -> Back to Keycloak.
 4.  **Keycloak Redirects Back**:
-    - To: `http://localhost:3000/api/auth/callback...`
+    - To: `http://localhost:18081/api/auth/callback...`
     - Payload: Authorization Code.
 5.  **App Exchanges Code for Token**:
     - App calls `http://localhost:18090/.../token`.
     - Returns **Access Token** (JWT).
 
-## 4. Verification Endpoints
-Your external app uses these endpoints (replace `{realm}`):
+## 4. Client App Configuration Reference (Summary)
 
-- **Discovery**: `http://localhost:18090/realms/{realm}/.well-known/openid-configuration`
-- **Authorization**: `http://localhost:18090/realms/{realm}/protocol/openid-connect/auth`
-- **Token**: `http://localhost:18090/realms/{realm}/protocol/openid-connect/token`
-- **Certs (Public Keys)**: `http://localhost:18090/realms/{realm}/protocol/openid-connect/certs`
+This is the **ONLY** data you need to configure in your remote Client Application (`http://localhost:18081`).
+
+| Setting | Value | Notes |
+| :--- | :--- | :--- |
+| **Issuer / Authority** | `http://localhost:18090/realms/codeiva-ecosystem` | The URL of Keycloak. |
+| **Client ID** | `tools-dashboard-client` | Must match "Clients" in Keycloak. |
+| **Client Secret** | *(Leave Empty)* | For Frontend Apps (Public). |
+| **Scopes** | `openid profile email` | Standard OIDC scopes. |
+| **Callback Path** | `/api/auth/callback/keycloak` | Depends on your Auth Library (e.g., NextAuth). |
+
+**Verification Endpoints (For debugging)**:
+- **Discovery**: `http://localhost:18090/realms/codeiva-ecosystem/.well-known/openid-configuration`
+- **Certs**: `http://localhost:18090/realms/codeiva-ecosystem/protocol/openid-connect/certs`
