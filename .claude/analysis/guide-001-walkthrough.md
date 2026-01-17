@@ -27,7 +27,7 @@ cp .env.example .env.dev
 ./bin/start.sh dev
 
 # 3. Access Admin Console
-# URL: http://localhost:8080
+# URL: http://localhost:18090
 # Default Creds: admin / admin (Check .env.dev)
 ```
 
@@ -51,7 +51,7 @@ Allows users to sign in with their Google accounts.
 
 **Google Cloud Setup**:
 1.  Create OAuth Credentials (Web Application).
-2.  **Redirect URI**: `http://localhost:8080/realms/{YOUR_REALM}/broker/google/endpoint`
+2.  **Redirect URI**: `http://localhost:18090/realms/{YOUR_REALM}/broker/google/endpoint`
 
 **Keycloak Setup**:
 1.  **Identity Providers** > **Add** > **Google**.
