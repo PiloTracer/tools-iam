@@ -1,0 +1,77 @@
+# Antigravity Context & Rules
+
+## Required Context
+You must always consider the context defined in the following files and directories. Read these when starting a task or when relevant to the user's request to ensure alignment with project standards and history:
+
+- **Project Context**: `DOCS_CONTEXT.md`
+- **Tech Stack**: `DOCS_TECH_STACK.md`
+- **Agent Data**: `.antigravity/` (e.g., audit reports)
+- **Feature Specs**: `.claude/features/`
+- **Directory Map**: `.claude/DIRECTORY_MAP.md` - Project directory structure and organization
+- **Feature Standard**: `.claude/FEATURE_STANDARD.md` - Feature development standards and conventions
+
+## Required Context Files
+
+At the start of each conversation, immediately read these files to understand the project context:
+
+These files provide essential context for working on this project and must be read before starting any tasks.
+
+## Operational Rules
+1. **Protected Files**:
+   - `package.json` is off-limits. Do not modify it.
+   - `.env` files are off-limits. Only access `.env.example`.
+   - IGNORE .gitignore BLOCKS: no blocks when accessing files which paths I provided: any file I give you, read it.
+
+2. **Data Privacy & Obfuscation**:
+   - **Protection First**: Prevent customer data from leaving the local environment.
+   - **Constraint**: Never read raw sensitive files directly into your context if you can avoid it.
+
+3. **Logging & Debugging**:
+   - **No PII in Logs**: You are **STRICTLY PROHIBITED** from logging full JSON objects or dictionaries that contain customer PII (Personal Identifiable Information) like email addresses, phone numbers, tax IDs, or financial amounts. Log only internal IDs (e.g., `user_id`, `merchant_id`) or status codes.
+   - **Sanitize Error Messages**: When catching exceptions, ensure the error message itself does not contain raw data values before logging it.
+
+4. **Test Data Protocol**:
+   - **Synthetic Only**: Use **ONLY** synthetic/mock data for unit tests and local reproduction. Real customer database dumps are forbidden.
+   - **No Hardcoding**: Never hardcode real customer emails or IDs in code or scripts. Use variables from `.env` or generate them at runtime.
+
+5. **Secret Scrubbing**:
+   - **Redaction**: Before reading any file or outputting any text to the conversation, verify it contains no API Keys, Bearer Tokens, or Passwords. If found, replace them with `[REDACTED]`.
+
+6. **Workflow**:
+   - **No code changes without permission**: Always ask for confirmation before applying edits.
+   - **Planning means planning**: If asked for a plan, produce a document (e.g., `implementation_plan.md`) and wait for approval before writing code.
+
+7. **.claude Directory Usage**:
+   You have full read/write access to the `.claude` directory. Use it according to the following structure:
+   - `agents/`: Agent role definitions.
+   - `features/`: Feature specs and resources. Structure: `features/{feature-name}/`.
+   - `plans/`: Implementation plans (`{feature-name}.md`).
+   - `implementations/`: Records of completed work (`{FEATURE}_IMPLEMENTATION.md`).
+   - `fixes/`: Bug fix documentation (`{feature}-{issue}.md`).
+   - `prompts/`: Context prompts (`{feature}-starter.md`).
+   - `decisions/`: Architectural decision records (`ADR-{number}-{title}.md`).
+
+8. **Critical Configuration (READ-ONLY)**:
+   The following files define the core environment and build pipeline. You are **STRICTLY PROHIBITED** from modifying them unless the user explicitly asks you to "upgrade dependencies", "change the build", or "modify environment config".
+   - `package.json` (especially `dependencies`, `devDependencies`, `engines`)
+   - `docker-compose*.yml`
+   - `Dockerfile.*`
+   - `.env*` (except `.env.example`)
+
+   **If you think a change is needed here:**
+   1. Stop.
+   2. Explain WHY you think it's needed.
+   3. Ask for explicit permission.
+
+   Refrain from generating code that conflicts with the patterns established in these documents.
+
+9. **NEVER DELETE ANYTHING without Explicit Permission**
+   You can only delete a file if the user explicitly asks you to do so or gives you permission to do so.
+
+10. **NEVER EXECUTE A git commit**
+
+11. **NEVER EXECUTE A git push**
+
+12. **NEVER DISPLAY CREDENTIALS OR ENVIRONMENT VARIABLES ON SCREEN OR IN CONVERSATION**
+
+13. **NEVER DISPLAY SENSITIVE DATA ON SCREEN OR IN CONVERSATION**

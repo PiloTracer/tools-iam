@@ -1,0 +1,56 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Docker
+pg_data/
+redis_data/
+celery_data/
+.docker/
+
+# Dependencies
+node_modules/
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# Build
+build/
+dist/
+.next/
+
+# Temporary
+tmp/
+*.tmp
+*.bak
+*~
+
+# Project
+.antigravity/
+.misc/
+audit_results.txt
+full-logs.txt
+
+# Other:
+secrets.*
+
