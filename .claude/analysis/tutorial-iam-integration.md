@@ -102,3 +102,5 @@ This is the **ONLY** data you need to configure in your remote Client Applicatio
 **Verification Endpoints (For debugging)**:
 - **Discovery**: `http://localhost:18090/realms/codeiva-ecosystem/.well-known/openid-configuration`
 - **Certs**: `http://localhost:18090/realms/codeiva-ecosystem/protocol/openid-connect/certs`
+
+...
