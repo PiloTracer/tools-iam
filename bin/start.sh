@@ -66,8 +66,8 @@ esac
 
 # 4. Load Project Name & Suffix
 if [ -f "$ENV_FILE" ]; then
-    PROJ_NAME=$(grep "^COMPOSE_PROJECT_NAME=" "$ENV_FILE" | cut -d= -f2 | tr -d '"' | tr -d "'" | tr -d '\r')
-    RAW_SUFFIX=$(grep "^DEPLOY_SUFFIX=" "$ENV_FILE" | cut -d= -f2 | tr -d '"' | tr -d "'" | tr -d '\r')
+    PROJ_NAME=$(grep "^COMPOSE_PROJECT_NAME=" "$ENV_FILE" | tail -n 1 | cut -d= -f2 | tr -d '"' | tr -d "'" | tr -d '\r')
+    RAW_SUFFIX=$(grep "^DEPLOY_SUFFIX=" "$ENV_FILE" | tail -n 1 | cut -d= -f2 | tr -d '"' | tr -d "'" | tr -d '\r')
     export DEPLOY_SUFFIX=$(echo "$RAW_SUFFIX" | tr '[:upper:]' '[:lower:]')
 fi
 
