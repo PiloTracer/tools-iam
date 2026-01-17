@@ -105,8 +105,69 @@ pause() {
 
 # 5. Core Functions
 
+# 5. Core Functions
+
+# Load Backup Dir from Env or Default
+if [ -z "$BACKUP_DIR" ]; then
+    BACKUP_DIR="/data/backups_${DEPLOY_SUFFIX}"
+fi
+
+# Load Import Dir from Env or Default
+if [ -z "$IMPORT_DIR" ]; then
+    IMPORT_DIR="./data/import"
+fi
+
+# Ensure Host Directories (Idempotent)
+ensure_host_directories() {
+    # 1. Backup Directory
+    if [ ! -d "$BACKUP_DIR" ]; then
+        echo "Creating backup directory: $BACKUP_DIR"
+        mkdir -p "$BACKUP_DIR"
+    fi
+
+    # 2. Import Directory
+    if [ ! -d "$IMPORT_DIR" ]; then
+        echo "Creating import directory: $IMPORT_DIR"
+        mkdir -p "$IMPORT_DIR"
+    fi
+}
+
+# Ensure External Volumes Exist (Idempotent)
+ensure_volumes() {
+  echo "Checking external volumes..."
+  
+  if docker volume inspect "$PG_VOLUME" >/dev/null 2>&1; then
+    echo "✓ Volume exists: $PG_VOLUME"
+  else
+    echo "Creating missing external volume: $PG_VOLUME"
+    docker volume create "$PG_VOLUME"
+    echo "✓ Volume created: $PG_VOLUME"
+  fi
+}
+
+prune_anonymous_volumes() {
+  echo "Pruning unused anonymous volumes..."
+  PROTECTED_VOLUMES="pg_data ${PG_VOLUME}"
+  docker volume ls -q -f dangling=true | while read -r volume_name; do
+    [ -z "$volume_name" ] && continue
+    if echo "$PROTECTED_VOLUMES" | grep -qw "$volume_name"; then
+      echo "⚠️  PROTECTED: Skipping critical volume: $volume_name"
+      continue
+    fi
+    echo "Removing anonymous volume: $volume_name"
+    docker volume rm "$volume_name" >/dev/null 2>&1 || true
+  done
+  echo "Anonymous volume pruning complete."
+}
+
+ensure_directories_and_volumes() {
+    ensure_host_directories
+    ensure_volumes
+}
+
 up() {
   clear
+  ensure_directories_and_volumes
   echo "Bringing up environment ($TARGET_ENV)..."
   if ! $DOCKER_COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --build; then
      echo "❌ Startup failed."
@@ -114,6 +175,7 @@ up() {
      return
   fi
   
+  prune_anonymous_volumes
   echo ""
   echo "✅ Environment is up!"
   $DOCKER_COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" ps
@@ -124,6 +186,7 @@ down() {
   clear
   echo "Stopping environment..."
   $DOCKER_COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" down --remove-orphans
+  prune_anonymous_volumes
   echo "Environment stopped."
   pause
 }
@@ -133,6 +196,91 @@ restart() {
   echo "Restarting environment..."
   $DOCKER_COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" restart
   echo "Restart complete."
+  pause
+}
+
+backup() {
+  clear
+  timestamp=$(date +%Y%m%d_%H%M%S)
+  echo "Manual Backup: $TIMESTAMP"
+  echo "Detailed Status: [Backing up to $BACKUP_DIR]"
+  
+  ensure_host_directories
+  
+  # Check if volume exists
+  
+  # Check if volume exists
+  if ! docker volume inspect "$PG_VOLUME" >/dev/null 2>&1; then
+      echo "❌ Volume $PG_VOLUME does not exist. Cannot backup."
+      pause
+      return
+  fi
+
+  echo "Backing up Postgres Data ($PG_VOLUME)..."
+  # Use busybox to tar the volume content to the host backup dir
+  docker run --rm \
+    -v "${PG_VOLUME}":/data \
+    -v "$BACKUP_DIR":/backup \
+    busybox sh -c "tar czvf /backup/pg_${TIMESTAMP}.tar.gz -C /data ."
+  
+  if [ $? -eq 0 ]; then
+      echo "✓ Postgres backup successful."
+  else
+      echo "❌ Postgres backup failed."
+      pause
+      return
+  fi
+
+  # Symlinks (Latest)
+  ln -sf "$BACKUP_DIR/pg_${TIMESTAMP}.tar.gz" "$BACKUP_DIR/_backup_pg.tar.gz"
+
+  # Rotation (Keep 7 days)
+  find "$BACKUP_DIR" -name "pg_*.tar.gz" -mtime +7 -delete
+  
+  echo ""
+  echo "✅ Backup complete."
+  ls -lh "$BACKUP_DIR" | grep "$TIMESTAMP"
+  pause
+}
+
+restore_backup() {
+  clear
+  echo "⚠️  DANGER: RESTORE BACKUP ($TARGET_ENV)"
+  echo "    This will:"
+  echo "    1. STOP all services."
+  echo "    2. DELETE the current database volume ($PG_VOLUME)."
+  echo "    3. RESTORE from: $BACKUP_DIR/_backup_pg.tar.gz"
+  echo ""
+  read -p "Are you sure? (yes/no): " confirm
+  if [ "$confirm" != "yes" ]; then echo "Cancelled."; pause; return; fi
+
+  # Check for backup file
+  BACKUP_FILE="$BACKUP_DIR/_backup_pg.tar.gz"
+  if [ ! -f "$BACKUP_FILE" ]; then 
+    echo "❌ Backup file not found: $BACKUP_FILE"
+    echo "   (Make sure you have run a backup first)"
+    pause
+    return
+  fi
+
+  echo "Stopping containers..."
+  $DOCKER_COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" down
+
+  echo "Wiping Volume ($PG_VOLUME)..."
+  docker volume rm "$PG_VOLUME" >/dev/null 2>&1 || true
+  docker volume create "$PG_VOLUME" >/dev/null
+  echo "✓ Volume recreated."
+
+  echo "Restoring Data..."
+  docker run --rm \
+    -v "${PG_VOLUME}":/data \
+    -v "$BACKUP_DIR":/backup \
+    busybox sh -c "tar xzvf /backup/_backup_pg.tar.gz -C /data"
+
+  echo "Restarting services..."
+  $DOCKER_COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --build
+  
+  echo "✅ Restore complete."
   pause
 }
 
@@ -153,7 +301,11 @@ while true; do
   echo " 2. Down (Stop)"
   echo " 3. Restart"
   echo " 4. View Logs"
+  echo " 5. Backup (Manual)"
+  echo " 6. RESTORE BACKUP (Overwrite!)"
   echo " 0. Exit"
+  echo "========================================="
+  echo " Backup Dir: $BACKUP_DIR"
   echo "========================================="
   read -p "Select: " opt
   case $opt in
@@ -161,6 +313,8 @@ while true; do
     2) down ;;
     3) restart ;;
     4) view_logs ;;
+    5) backup ;;
+    6) restore_backup ;;
     0) exit 0 ;;
     *) ;;
   esac
