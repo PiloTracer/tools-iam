@@ -40,7 +40,6 @@ dist/
 .next/
 
 # Temporary
-tmp/
 *.tmp
 *.bak
 *~
